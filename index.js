@@ -19,18 +19,20 @@ const __dirname = path.dirname(__filename);
 
 const port = process.env.PORT || 4444;
 const DATABASE_URL = process.env.MONGODB_URL;
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim());
 
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE"]
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
 
 app.use(cookieParser());
