@@ -2,91 +2,83 @@ import { Server as SocketIOServer } from 'socket.io';
 import Message from './models/MessageModel.js';
 import Channel from './models/Channel.js';
 
-const setUpSocket = (server) => {
+const setUpSocket = server => {
+  const allowedOrigins =
+    process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+
   const io = new SocketIOServer(server, {
     cors: {
-      origin: process.env.ORIGIN,
-      methods: ['GET', 'POST'],
+      origin: (origin, cb) =>
+        !origin || allowedOrigins.includes(origin) ? cb(null, true) : cb(new Error('CORS')),
       credentials: true,
+      methods: ['GET', 'POST'],
     },
   });
 
   const userSocketMap = new Map();
 
-  const disconnect = (socket) => {
-    for (const [userId, socketId] of userSocketMap.entries()) {
-      if (socketId === socket.id) {
-        userSocketMap.delete(userId);
+  const disconnect = socket => {
+    for (const [uid, sid] of userSocketMap.entries()) {
+      if (sid === socket.id) {
+        userSocketMap.delete(uid);
         break;
       }
     }
   };
 
-  const sendChannelMessage = async (message) => {
-    try {
-      const { channelId, sender, contents, messageType, fileUrl, tempClientMessageId } = message;
+  const sendChannelMessage = async msg => {
+    const { channelId, sender, contents, messageType, fileUrl, tempClientMessageId } = msg;
 
-      const createdMessage = await Message.create({
-        sender,
-        channelId,
-        messageType,
-        ...(messageType === 'text' ? { contents } : {}),
-        ...(messageType === 'file' ? { fileUrl } : {}),
-      });
+    const created = await Message.create({
+      sender,
+      channelId,
+      messageType,
+      ...(messageType === 'text' ? { contents } : {}),
+      ...(messageType === 'file' ? { fileUrl } : {}),
+    });
 
-      const messageData = await Message.findById(createdMessage._id)
-        .populate('sender', 'id email firstName lastName image color')
-        .lean();
+    const data = await Message.findById(created._id)
+      .populate('sender', 'id email name image color')
+      .lean();
 
-      await Channel.findByIdAndUpdate(channelId, { $push: { messages: createdMessage._id } });
+    await Channel.findByIdAndUpdate(channelId, { $push: { messages: created._id } });
 
-      const channel = await Channel.findById(channelId).populate('members admin');
+    const channel = await Channel.findById(channelId).populate('members admin');
+    const payload = { ...data, channelId, tempClientMessageId };
 
-      const finalData = { ...messageData, channelId, tempClientMessageId };
+    channel.members.forEach(m => {
+      const sid = userSocketMap.get(m._id.toString());
+      if (sid) io.to(sid).emit('receive-channel-message', payload);
+    });
 
-      if (channel && channel.members) {
-        channel.members.forEach((member) => {
-          const memberSocketId = userSocketMap.get(member._id.toString());
-          if (memberSocketId) io.to(memberSocketId).emit('receive-channel-message', finalData);
-        });
-        const adminSocketId = userSocketMap.get(channel.admin._id.toString());
-        if (adminSocketId) io.to(adminSocketId).emit('receive-channel-message', finalData);
-      }
-    } catch (err) {
-      console.error('[Socket] Error saving channel message:', err);
-    }
+    const adminSid = userSocketMap.get(channel.admin._id.toString());
+    if (adminSid) io.to(adminSid).emit('receive-channel-message', payload);
   };
 
-  const sendMessage = async (message) => {
-    try {
-      const senderSocketId = userSocketMap.get(message.sender);
-      const recipientSocketId = userSocketMap.get(message.recipient);
+  const sendMessage = async msg => {
+    const senderSid = userSocketMap.get(msg.sender);
+    const recipientSid = userSocketMap.get(msg.recipient);
 
-      const dbMessage = {
-        sender: message.sender,
-        recipient: message.recipient,
-        messageType: message.messageType,
-        ...(message.messageType === 'text' ? { contents: message.contents } : {}),
-        ...(message.messageType === 'file' ? { fileUrl: message.fileUrl } : {}),
-      };
+    const created = await Message.create({
+      sender: msg.sender,
+      recipient: msg.recipient,
+      messageType: msg.messageType,
+      ...(msg.messageType === 'text' ? { contents: msg.contents } : {}),
+      ...(msg.messageType === 'file' ? { fileUrl: msg.fileUrl } : {}),
+    });
 
-      const createdMessage = await Message.create(dbMessage);
+    const data = await Message.findById(created._id)
+      .populate('sender', 'id email name image color')
+      .populate('recipient', 'id email name image color')
+      .lean();
 
-      const messageData = await Message.findById(createdMessage._id)
-        .populate('sender', 'id email name image color')
-        .populate('recipient', 'id email name image color')
-        .lean();
+    const payload = { ...data, tempClientMessageId: msg.tempClientMessageId };
 
-      const emittedMessageData = { ...messageData, tempClientMessageId: message.tempClientMessageId };
-
-      if (recipientSocketId) io.to(recipientSocketId).emit('recieveMessage', emittedMessageData);
-      if (senderSocketId) io.to(senderSocketId).emit('recieveMessage', emittedMessageData);
-    } catch (error) {
-      console.error('Failed to save message or emit:', error);
-    }
+    if (recipientSid) io.to(recipientSid).emit('recieveMessage', payload);
+    if (senderSid) io.to(senderSid).emit('recieveMessage', payload);
   };
 
-  io.on('connection', (socket) => {
+  io.on('connection', socket => {
     const userId = socket.handshake.query.userId;
     if (userId) userSocketMap.set(userId, socket.id);
 
