@@ -21,7 +21,7 @@ const port = process.env.PORT || 4444;
 const DATABASE_URL = process.env.MONGODB_URL;
 
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim());
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(origin => origin.trim());
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -34,7 +34,6 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
-
 app.use(cookieParser());
 app.use(express.json());
 
