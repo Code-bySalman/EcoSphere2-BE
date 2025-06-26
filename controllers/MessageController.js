@@ -1,5 +1,5 @@
 import Message from "../models/MessageModel.js";
-import {mkdirSync, renameSync} from "fs"
+
 export const getMessages = async (request, response, next) => {
     try {
         const user1 = request.userId;

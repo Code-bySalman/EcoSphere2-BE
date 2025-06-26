@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import User from "../models/UserModel.js";
 import Message from "../models/MessageModel.js";
-import Channel from "../models/Channel.js";
+
 
 export const searchContacts = async (request, response, next) => {
     try {
@@ -30,8 +30,8 @@ export const searchContacts = async (request, response, next) => {
 
 export const getContactsToDm = async (request, response, next) => {
     try {
-      let {userId} = request; // This is correctly 'userId'
-      userId = new mongoose.Types.ObjectId(userId); // Convert to ObjectId
+      let {userId} = request; 
+      userId = new mongoose.Types.ObjectId(userId); 
 
       const contacts = await Message.aggregate([
         {
@@ -47,16 +47,16 @@ export const getContactsToDm = async (request, response, next) => {
         {$group:{
             _id:{
                 $cond:{
-                    // FIX: Changed 'userID' to 'userId' here
+                    
                     if:{$eq:["$sender", userId]},
                     then: "$recipient",
                     else:"$sender"
                 }
             },
-            lastMessageTime:{$first: "$timestamp"} // Corrected syntax: "$timestamp" not $timestamp
+            lastMessageTime:{$first: "$timestamp"} 
         }},
         {$lookup:{
-            from:"users", // FIX: Collection name is usually plural "users", not "user"
+            from:"users",
             localField: "_id",
             foreignField:"_id",
             as:"contactInfo",
@@ -82,7 +82,7 @@ export const getContactsToDm = async (request, response, next) => {
       ])
         return response.status(200).json({contacts})
     } catch (error) {
-        console.error("Error in getContactsToDm:", error); // Changed log to reflect getContactsToDm
+        
         response.status(500).json({ message: "Internal server error." });
     }
 }
