@@ -19,7 +19,7 @@ const __dirname = path.dirname(__filename);
 
 const port = process.env.PORT || 4444;
 const DATABASE_URL = process.env.MONGODB_URL;
-import cors from 'cors';
+
 
 const allowedOrigins =
   process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
