@@ -14,43 +14,48 @@ const createToken = (email, userId) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const signup = async (request, response, next) => {
-    try {
-        const { email, password } = request.body;
-        if (!email || !password) {
-            return response.status(400).json({ message: "Email and password are required" });
-        }
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return response.status(409).json({ message: "User with this email already exists." });
-        }
+export const signup = async (req, res) => {
+  try {
+    const password = req.body.password;
+    const rawEmail = req.body.email;
+    const email = rawEmail?.trim().toLowerCase();
 
-        const user = await User.create({ email, password });
-        const token = createToken(email, user.id);
-
-        response.cookie("jwt", token, {
-            maxAge: maxAge,
-            secure: true,
-            sameSite: "None",
-            httpOnly: true,
-        })
-        return response.status(201).json({
-            user: {
-                id: user.id,
-                email: user.email,
-                profileSetup: user.profileSetup
-            },
-            token: token
-        });
-
-    } catch (error) {
-        console.error("Error in signup:", error);
-        if (error.code === 11000) {
-            return response.status(409).json({ message: "Email already registered." });
-        }
-        response.status(500).json({ message: "Internal server error during signup." });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
     }
-}
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: "User with this email already exists." });
+    }
+
+    const user = await User.create({ email, password });
+
+    const token = createToken(email, user.id);
+
+    res.cookie("jwt", token, {
+      maxAge: maxAge,
+      secure: true,
+      sameSite: "None",
+      httpOnly: true
+    });
+
+    return res.status(201).json({
+      user: {
+        id: user.id,
+        email: user.email,
+        profileSetup: user.profileSetup
+      },
+      token
+    });
+  } catch (error) {
+    console.error("Error in signup:", error);
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "Email already registered." });
+    }
+    res.status(500).json({ message: "Internal server error during signup." });
+  }
+};
 
 export const login = async (request, response, next) => {
     try {
