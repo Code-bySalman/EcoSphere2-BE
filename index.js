@@ -10,6 +10,7 @@ import messageRoutes from './routes/MessagesRoutes.js';
 import setUpSocket from './socket.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import User from './models/UserModel.js';
 
 dotenv.config();
 
@@ -20,14 +21,12 @@ const __dirname = path.dirname(__filename);
 const port = process.env.PORT || 4444;
 const DATABASE_URL = process.env.MONGODB_URL;
 
-
 const allowedOrigins =
   process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
 
 app.use(
   cors({
     origin: (origin, cb) => {
-     
       if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
       return cb(new Error('Not allowed by CORS'));
     },
@@ -51,16 +50,21 @@ if (!DATABASE_URL) {
 }
 
 mongoose.connect(DATABASE_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => {
-    console.log('Connected to MongoDB');
+  .then(async () => {
+    console.log('✅ Connected to MongoDB');
+
+    
+    await User.syncIndexes();
+    console.log('✅ User indexes synced');
+
     const server = app.listen(port, () =>
-      console.log(`Server listening on port ${port}`)
+      console.log(`🚀 Server listening on port ${port}`)
     );
     setUpSocket(server);
   })
   .catch(err => {
-    console.error('MongoDB connection error:', err.message);
+    console.error('❌ MongoDB connection error:', err.message);
     process.exit(1);
   });
 
-export default app;  
+export default app;
