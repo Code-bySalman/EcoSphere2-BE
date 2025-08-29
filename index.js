@@ -33,6 +33,7 @@ app.use(
     credentials: true,
   })
 );
+
 app.use(cookieParser());
 app.use(express.json());
 
@@ -56,9 +57,9 @@ mongoose.connect(DATABASE_URL, { useNewUrlParser: true, useUnifiedTopology: true
     
  
 
-    const server = app.listen(port, () =>
-      console.log(`🚀 Server listening on port ${port}`)
-    );
+    const server = app.listen(port, '0.0.0.0', () =>
+  console.log(`🚀 Server listening on port ${port}`)
+);
     setUpSocket(server);
   })
   .catch(err => {
