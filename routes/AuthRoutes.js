@@ -42,6 +42,9 @@ authRoutes.post("/setup-profile", verifyToken, setupProfile);
 authRoutes.post("/update-profile", verifyToken, updateProfile);
 authRoutes.post("/upload-image", verifyToken, upload.single("profileImage"), uploadImage);
 authRoutes.delete("/delete-image", verifyToken, deleteImage);
-authRoutes.post("/logout", logOutProfile)
+authRoutes.post("/logout", logOutProfile);
+authRoutes.get('/ping', (req, res) => {
+  res.send('pong from auth routes');
+});
 
 export default authRoutes;
