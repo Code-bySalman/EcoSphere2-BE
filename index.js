@@ -54,8 +54,7 @@ mongoose.connect(DATABASE_URL, { useNewUrlParser: true, useUnifiedTopology: true
     console.log('✅ Connected to MongoDB');
 
     
-    await User.syncIndexes();
-    console.log('✅ User indexes synced');
+ 
 
     const server = app.listen(port, () =>
       console.log(`🚀 Server listening on port ${port}`)
